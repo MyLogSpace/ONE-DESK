@@ -71,6 +71,23 @@ function buildSeedState() {
       { id: 'cus_5', name: '배준호', company: '데일리커머스', contact: '010-1111-2222', stage: '상담', dealAmount: 3000000, memo: '견적 요청' },
     ],
 
+    contracts: [
+      {
+        id: 'ctr_1', employeeId: 'emp_1', contractType: '정규직',
+        startDate: iso(2019, 3, 4), endDate: '', workplace: '서울 본사',
+        jobDescription: '경영지원팀 팀장 직무', workHours: '09:00~18:00', breakTime: '12:00~13:00',
+        workDays: '주 5일(월~금), 주휴일 일요일', wageType: '월급', wageAmount: 4200000, paymentDate: '매월 25일',
+        annualLeaveNoticed: true, socialInsuranceEnrolled: true, hasSignature: true,
+      },
+      {
+        id: 'ctr_2', employeeId: 'emp_4', contractType: '정규직',
+        startDate: iso(2023, 9, 1), endDate: '', workplace: '서울 본사',
+        jobDescription: '개발팀 사원 직무', workHours: '09:00~18:00', breakTime: '12:00~13:00',
+        workDays: '', wageType: '월급', wageAmount: 3100000, paymentDate: '',
+        annualLeaveNoticed: true, socialInsuranceEnrolled: true, hasSignature: false,
+      },
+    ],
+
     assets: [
       { id: 'ast_1', name: '노트북 (MacBook Pro)', category: '전자기기', purchaseDate: iso(thisY - 1, 3, 15), price: 2800000, usefulYears: 4, method: '정률법', qty: 1, safeAmount: 15 },
       { id: 'ast_2', name: '사무용 의자', category: '가구', purchaseDate: iso(thisY - 2, 9, 1), price: 350000, usefulYears: 5, method: '정액법', qty: 8, safeAmount: 3 },
