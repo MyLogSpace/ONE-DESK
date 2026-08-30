@@ -3,13 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ONE DESK · 경영지원 통합 플랫폼</title>
+<title>ONE DESK · 하나솔루션 경영지원 통합 플랫폼</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" as="style" crossorigin
   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+
+<!-- ===================== LOGIN SCREEN ===================== -->
+<div class="login-screen" id="loginScreen"></div>
 
 <div class="app">
 
@@ -19,7 +22,7 @@
       <span class="brand-mark">OD</span>
       <div class="brand-text">
         <strong>ONE DESK</strong>
-        <small>경영지원 통합 플랫폼</small>
+        <small>하나솔루션 · 경영지원 통합 플랫폼</small>
       </div>
     </div>
 
@@ -27,25 +30,28 @@
       <button class="nav-item is-active" data-view="dashboard">
         <span class="nav-ico">◆</span>대시보드
       </button>
-      <button class="nav-item" data-view="hrm">
+      <button class="nav-item" data-view="myinfo" data-role="general">
+        <span class="nav-ico">◆</span>마이페이지
+      </button>
+      <button class="nav-item" data-view="hrm" data-role="admin">
         <span class="nav-ico">◆</span>인사관리 <em>HRM</em>
       </button>
-      <button class="nav-item" data-view="approval">
+      <button class="nav-item" data-view="approval" data-role="admin">
         <span class="nav-ico">◆</span>전자결재
       </button>
-      <button class="nav-item" data-view="accounting">
+      <button class="nav-item" data-view="accounting" data-role="admin">
         <span class="nav-ico">◆</span>회계·지출증빙
       </button>
-      <button class="nav-item" data-view="crm">
+      <button class="nav-item" data-view="crm" data-role="admin">
         <span class="nav-ico">◆</span>고객·영업 <em>CRM</em>
       </button>
-      <button class="nav-item" data-view="assets">
+      <button class="nav-item" data-view="assets" data-role="admin">
         <span class="nav-ico">◆</span>재고·자산관리
       </button>
     </nav>
 
     <div class="sidebar-foot">
-      <button class="nav-item nav-item--ghost" data-view="settings">
+      <button class="nav-item nav-item--ghost" data-view="settings" data-role="admin">
         <span class="nav-ico">⚙</span>데이터 백업/복구
       </button>
       <div class="sidebar-note">
@@ -63,7 +69,19 @@
         <p id="viewSubtitle">오늘 현황을 한눈에 확인하세요</p>
       </div>
       <div class="topbar-right">
+        <div class="role-toggle" id="roleToggle">
+          <button type="button" class="role-toggle-btn" data-role="general">일반 직원 보기</button>
+          <button type="button" class="role-toggle-btn" data-role="admin">경영지원팀 보기</button>
+        </div>
         <span class="today" id="todayLabel"></span>
+        <div class="user-chip" id="userChip">
+          <div class="user-chip-avatar" id="userChipAvatar"></div>
+          <div class="user-chip-info">
+            <strong id="userChipName"></strong>
+            <small id="userChipMeta"></small>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btnLogout">로그아웃</button>
+        </div>
       </div>
     </header>
 
@@ -90,6 +108,8 @@
 <script src="js/crm.js"></script>
 <script src="js/assets.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/myinfo.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
