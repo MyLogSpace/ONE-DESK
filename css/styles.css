@@ -251,6 +251,14 @@ td.num, th.num{ text-align:right; font-variant-numeric: tabular-nums; }
 .field-row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
 .hint{ font-size:11px; color: var(--text-faint); }
 
+.ocr-status{
+  margin-top:8px; padding:8px 10px; border-radius: var(--radius-s);
+  font-size:11.5px; line-height:1.5;
+}
+.ocr-status--busy{ background: var(--sub-soft); color: var(--accent-2); }
+.ocr-status--ok{ background:#E9F5EA; color:#1E7A34; }
+.ocr-status--warn{ background: var(--point-soft); color:#9A5210; }
+
 /* progress / budget gauge */
 .gauge{ height:9px; border-radius:999px; background:#EEF1EE; overflow:hidden; }
 .gauge > span{ display:block; height:100%; border-radius:999px; background:var(--sub); transition:width .3s ease; }

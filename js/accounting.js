@@ -173,7 +173,8 @@ function openAccModal(ym, entry) {
       <div class="field">
         <label>영수증 첨부 (이미지)</label>
         <input type="file" id="receiptFile" accept="image/*">
-        <div class="hint">첨부하면 아래 미리보기가 뜨고, '영수증 보유' 항목이 자동 체크됩니다. 큰 이미지는 자동으로 축소되어 저장됩니다.</div>
+        <div class="hint">첨부하면 AI가 금액·날짜를 먼저 읽어 채워드려요. 인식 결과는 반드시 확인 후 필요하면 직접 수정해주세요. 큰 이미지는 자동으로 축소되어 저장됩니다.</div>
+        <div id="ocrStatus" class="ocr-status" style="display:none;"></div>
         <div id="receiptPreviewWrap" style="${isEdit && entry.receiptImage ? '' : 'display:none;'}margin-top:8px;">
           <img id="receiptPreviewImg" src="${isEdit && entry.receiptImage ? entry.receiptImage : ''}"
                style="max-width:100%;max-height:180px;border-radius:8px;border:1px solid var(--border);display:block;">
@@ -199,6 +200,10 @@ function openAccModal(ym, entry) {
   const previewWrap = document.getElementById('receiptPreviewWrap');
   const previewImg = document.getElementById('receiptPreviewImg');
   const hasReceiptChk = document.getElementById('hasReceiptChk');
+  const ocrStatus = document.getElementById('ocrStatus');
+  const amountInput = document.querySelector('#accForm [name="amount"]');
+  const dateInput = document.querySelector('#accForm [name="date"]');
+  const memoInput = document.querySelector('#accForm [name="memo"]');
 
   document.getElementById('receiptFile').addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -209,17 +214,64 @@ function openAccModal(ym, entry) {
       previewWrap.style.display = '';
       hasReceiptChk.checked = true; // 영수증을 첨부하면 보유 여부를 자동 체크(사용자가 다시 해제 가능)
       UI.toast('영수증 미리보기가 반영되었습니다.');
+      runReceiptOcr(receiptImage);
     } catch (err) {
       console.error(err);
       alert('이미지를 읽는 중 문제가 발생했습니다.');
     }
   });
 
+  // 영수증 이미지에서 금액·날짜를 1차로 읽어 입력창에 채워준다.
+  // AI가 인식한 값을 그대로 신뢰하지 않고, 사용자가 눈으로 확인·수정하는 것을 전제로 한다.
+  async function runReceiptOcr(dataURL) {
+    if (typeof Tesseract === 'undefined') {
+      ocrStatus.style.display = '';
+      ocrStatus.className = 'ocr-status ocr-status--warn';
+      ocrStatus.textContent = '⚠ OCR 라이브러리를 불러오지 못했습니다. 금액·날짜를 직접 입력해주세요.';
+      return;
+    }
+    ocrStatus.style.display = '';
+    ocrStatus.className = 'ocr-status ocr-status--busy';
+    ocrStatus.textContent = '🔍 영수증에서 금액·날짜를 인식하는 중...';
+    try {
+      const { data } = await Tesseract.recognize(dataURL, 'kor+eng');
+      const text = data && data.text ? data.text : '';
+      const parsed = parseReceiptText(text);
+
+      let filled = [];
+      if (parsed.amount && (!amountInput.value || amountInput.value === '0')) {
+        amountInput.value = parsed.amount;
+        filled.push('금액');
+      }
+      if (parsed.date && dateInput) {
+        dateInput.value = parsed.date;
+        filled.push('날짜');
+      }
+      if (parsed.merchant && memoInput && !memoInput.value) {
+        memoInput.value = parsed.merchant;
+        filled.push('메모');
+      }
+
+      if (filled.length) {
+        ocrStatus.className = 'ocr-status ocr-status--ok';
+        ocrStatus.textContent = `✓ ${filled.join('·')}을(를) 자동으로 채웠어요. 정확한지 확인 후 필요하면 수정해주세요.`;
+      } else {
+        ocrStatus.className = 'ocr-status ocr-status--warn';
+        ocrStatus.textContent = '영수증에서 금액/날짜를 정확히 읽지 못했어요. 직접 입력해주세요.';
+      }
+    } catch (err) {
+      console.error(err);
+      ocrStatus.className = 'ocr-status ocr-status--warn';
+      ocrStatus.textContent = '자동 인식에 실패했어요. 직접 입력해주세요.';
+    }
+  }
+
   document.getElementById('receiptRemove').addEventListener('click', () => {
     receiptImage = null;
     previewWrap.style.display = 'none';
     previewImg.src = '';
     document.getElementById('receiptFile').value = '';
+    ocrStatus.style.display = 'none';
   });
 
   const close = () => UI.closeModal();
@@ -270,6 +322,51 @@ function resizeImageToDataURL(file, maxWidth = 900, quality = 0.72) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+// OCR 원문 텍스트에서 금액·날짜·상호명을 추출한다.
+// 완벽한 인식을 목표로 하지 않는다 — "1차로 채워주고, 사람이 확인·수정한다"는 전제의 보조 도구다.
+function parseReceiptText(text) {
+  const result = { amount: null, date: null, merchant: null };
+  if (!text) return result;
+
+  const clean = text.replace(/\r/g, '');
+  const lines = clean.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  // 날짜: 2024-01-05 / 2024.01.05 / 2024/01/05 형태를 찾는다.
+  const dateMatch = clean.match(/(20\d{2})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+  if (dateMatch) {
+    const y = dateMatch[1];
+    const m = String(dateMatch[2]).padStart(2, '0');
+    const d = String(dateMatch[3]).padStart(2, '0');
+    if (+m >= 1 && +m <= 12 && +d >= 1 && +d <= 31) result.date = `${y}-${m}-${d}`;
+  }
+
+  // 금액: '합계/총액/결제금액' 근처의 숫자를 우선하고, 없으면 문서 내 최댓값을 사용한다.
+  const priorityLines = lines.filter((l) => /(합계|총액|결제금액|받을금액|판매금액|과세물품가액|공급대가)/.test(l));
+  const numberFrom = (line) => {
+    const matches = line.match(/[\d]{1,3}(?:,\d{3})+|\d{4,}/g);
+    if (!matches) return null;
+    const nums = matches.map((n) => parseInt(n.replace(/,/g, ''), 10)).filter((n) => n >= 100 && n <= 50000000);
+    return nums.length ? Math.max(...nums) : null;
+  };
+
+  let amount = null;
+  for (const line of priorityLines) {
+    const n = numberFrom(line);
+    if (n) { amount = n; break; }
+  }
+  if (!amount) {
+    const allNums = lines.map(numberFrom).filter((n) => n !== null);
+    if (allNums.length) amount = Math.max(...allNums);
+  }
+  result.amount = amount;
+
+  // 상호명: 보통 영수증 맨 위 1~2줄에 있고, 숫자만으로 이뤄진 줄은 제외한다.
+  const merchantLine = lines.slice(0, 3).find((l) => l.length >= 2 && !/^[\d.\-/:\s]+$/.test(l));
+  if (merchantLine) result.merchant = merchantLine.slice(0, 30);
+
+  return result;
 }
 
 function openReceiptViewer(entry) {
