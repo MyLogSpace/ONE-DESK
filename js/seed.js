@@ -8,13 +8,15 @@ function buildSeedState() {
   const thisM = today.getMonth() + 1;
 
   return {
-    meta: { version: 1, createdAt: new Date().toISOString() },
+    meta: { version: 1, createdAt: new Date().toISOString(), companyName: '하나솔루션' },
 
+    // systemRole('admin'|'general')과 birthDate가 있는 직원만 로그인 계정으로 사용됩니다.
+    // 비밀번호는 기본값(생년월일 앞 6자리)이며, 로그인 후 마이페이지에서 변경하면 password 필드에 저장됩니다.
     employees: [
-      { id: 'emp_1', name: '김도윤', dept: '경영지원팀', position: '팀장', hireDate: iso(2019, 3, 4), status: '출근' },
+      { id: 'emp_1', name: '김도윤', dept: '경영지원팀', position: '팀장', hireDate: iso(2019, 3, 4), status: '출근', birthDate: iso(1985, 4, 12), systemRole: 'admin' },
       { id: 'emp_2', name: '이서아', dept: '경영지원팀', position: '주임', hireDate: iso(2022, 7, 18), status: '출근' },
-      { id: 'emp_3', name: '박지훈', dept: '영업팀', position: '대리', hireDate: iso(2021, 1, 11), status: '휴가' },
-      { id: 'emp_4', name: '최하은', dept: '개발팀', position: '사원', hireDate: iso(2023, 9, 1), status: '출근' },
+      { id: 'emp_3', name: '박지훈', dept: '영업팀', position: '과장', hireDate: iso(2021, 1, 11), status: '휴가', birthDate: iso(1993, 7, 25), systemRole: 'general' },
+      { id: 'emp_4', name: '최하은', dept: '개발팀', position: '사원', hireDate: iso(2023, 9, 1), status: '출근', birthDate: iso(1999, 11, 3), systemRole: 'general' },
       { id: 'emp_5', name: '정우진', dept: '영업팀', position: '팀장', hireDate: iso(2018, 5, 20), status: '재택' },
     ],
 
