@@ -55,7 +55,7 @@ Views.approval = {
       tbody.innerHTML = list.map((a) => `
         <tr data-id="${a.id}">
           <td><span class="badge badge-gray">${a.docType}</span></td>
-          <td><strong>${UI.escapeHtml(a.title)}</strong>${a.docType === '휴가신청서' ? `<div class="hint">${UI.dateFmt(a.startDate)} ~ ${UI.dateFmt(a.endDate)} · ${a.days}일</div>` : ''}</td>
+          <td><strong>${UI.escapeHtml(a.title)}</strong>${a.docType === '휴가신청서' ? `<div class="hint">${UI.dateFmt(a.startDate)} ~ ${UI.dateFmt(a.endDate)} · ${a.days}일</div>` : ''}${a.status === '반려' && a.rejectReason ? `<div class="hint" style="color:var(--red);">반려 사유: ${UI.escapeHtml(a.rejectReason)}</div>` : ''}</td>
           <td>${UI.escapeHtml(a.requester)}</td>
           <td class="num">${a.docType === '지출결의서' ? `<strong>${UI.won(a.total)}</strong>` : '-'}</td>
           <td>${chainProgressHtml(a)}</td>
@@ -94,10 +94,7 @@ Views.approval = {
 
     UI.on(tbody, '.act-reject', 'click', (e, t) => {
       const a = STATE.approvals.find((x) => x.id === t.closest('tr').dataset.id);
-      a.status = '반려';
-      persist();
-      draw();
-      UI.toast('반려 처리되었습니다.');
+      openRejectModal(a, draw);
     });
 
     UI.on(tbody, '.act-del', 'click', (e, t) => {
@@ -161,14 +158,54 @@ function statusBadgeApv(status) {
   return `<span class="badge ${map[status]}">${status}</span>`;
 }
 
+// 반려 사유를 반드시 입력받아 기록한다 — 기안자가 마이페이지에서 왜 반려됐는지 확인할 수 있게 한다.
+function openRejectModal(a, onDone) {
+  UI.openModal(`
+    <div class="modal-head"><h3>반려 사유 입력</h3><button class="modal-close" id="mClose">✕</button></div>
+    <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:12px;">
+      <strong>${UI.escapeHtml(a.title)}</strong> (${UI.escapeHtml(a.requester)})
+    </div>
+    <form id="rejectForm">
+      <div class="field"><label>반려 사유</label>
+        <textarea name="reason" rows="3" required placeholder="예: 예산 초과로 재검토 필요" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 11px;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" id="mCancel">취소</button>
+        <button type="submit" class="btn btn-danger">반려 처리</button>
+      </div>
+    </form>
+  `);
+  const close = () => UI.closeModal();
+  document.getElementById('mClose').onclick = close;
+  document.getElementById('mCancel').onclick = close;
+  document.getElementById('rejectForm').onsubmit = (e) => {
+    e.preventDefault();
+    const reason = new FormData(e.target).get('reason').trim();
+    if (!reason) return;
+    a.status = '반려';
+    a.rejectReason = reason;
+    persist();
+    close();
+    onDone();
+    UI.toast('반려 처리되었습니다.');
+  };
+}
+
 /* ---------------------- 지출결의서 작성 ---------------------- */
-function openApvModal() {
+// presetRequester가 주어지면(마이페이지에서 호출) 기안자를 본인으로 고정해 임의 변경을 막는다.
+// 없으면(경영지원팀 전자결재 탭에서 호출) 로그인 계정이 없는 직원을 대신 등록할 수 있도록 자유 입력을 유지한다.
+function openApvModal(presetRequester) {
   UI.openModal(`
     <div class="modal-head"><h3>지출결의서 작성</h3><button class="modal-close" id="mClose">✕</button></div>
     <form id="apvForm">
       <div class="field"><label>제목</label><input name="title" required placeholder="예: 노트북 구매의 건"></div>
       <div class="field-row">
-        <div class="field"><label>기안자</label><input name="requester" required></div>
+        <div class="field"><label>기안자</label>
+          ${presetRequester
+            ? `<input value="${UI.escapeHtml(presetRequester)}" readonly style="background:var(--bg);color:var(--text-dim);">
+               <input type="hidden" name="requester" value="${UI.escapeHtml(presetRequester)}">`
+            : `<input name="requester" required>`}
+        </div>
         <div class="field"><label>분류</label>
           <select name="category">
             ${['비품 구매', '접대비', '소모품비', '통신비', '교육훈련비', '기타'].map((c) => `<option>${c}</option>`).join('')}
@@ -235,22 +272,28 @@ function openApvModal() {
     });
     persist();
     close();
-    Views.approval.render(document.getElementById('content'));
+    renderView(document.querySelector('.nav-item.is-active')?.dataset.view || 'dashboard');
     UI.toast('결재가 상신되었습니다.');
   };
 }
 
 /* ---------------------- 휴가신청서 작성 ---------------------- */
-function openLeaveModal() {
+// presetEmployeeId가 주어지면(마이페이지에서 호출) 신청자를 본인으로 고정한다.
+// 없으면(경영지원팀 전자결재 탭에서 호출) 로그인 계정이 없는 직원을 대신 등록할 수 있도록 선택 목록을 유지한다.
+function openLeaveModal(presetEmployeeId) {
   const emps = STATE.employees;
+  const presetEmp = presetEmployeeId ? emps.find((e) => e.id === presetEmployeeId) : null;
   UI.openModal(`
     <div class="modal-head"><h3>휴가신청서 작성</h3><button class="modal-close" id="mClose">✕</button></div>
     <form id="leaveForm">
       <div class="field"><label>신청자</label>
-        <select name="employeeId" id="leaveEmp" required>
-          <option value="">선택하세요</option>
-          ${emps.map((e) => `<option value="${e.id}">${UI.escapeHtml(e.name)} (${UI.escapeHtml(e.dept)})</option>`).join('')}
-        </select>
+        ${presetEmp
+          ? `<input value="${UI.escapeHtml(presetEmp.name)} (${UI.escapeHtml(presetEmp.dept)})" readonly style="background:var(--bg);color:var(--text-dim);">
+             <input type="hidden" name="employeeId" id="leaveEmp" value="${presetEmp.id}">`
+          : `<select name="employeeId" id="leaveEmp" required>
+              <option value="">선택하세요</option>
+              ${emps.map((e) => `<option value="${e.id}">${UI.escapeHtml(e.name)} (${UI.escapeHtml(e.dept)})</option>`).join('')}
+            </select>`}
       </div>
       <div class="field-row">
         <div class="field"><label>시작일</label><input type="date" name="startDate" id="leaveStart" required></div>
@@ -301,6 +344,7 @@ function openLeaveModal() {
   empEl.addEventListener('change', recalc);
   startEl.addEventListener('change', recalc);
   endEl.addEventListener('change', recalc);
+  recalc(); // 신청자가 미리 고정된 경우(마이페이지) 바로 잔여 연차를 보여준다
 
   const close = () => UI.closeModal();
   document.getElementById('mClose').onclick = close;
@@ -328,7 +372,7 @@ function openLeaveModal() {
     });
     persist();
     close();
-    Views.approval.render(document.getElementById('content'));
+    renderView(document.querySelector('.nav-item.is-active')?.dataset.view || 'dashboard');
     UI.toast('휴가신청서가 상신되었습니다.');
   };
 }

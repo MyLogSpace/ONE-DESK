@@ -20,6 +20,13 @@ Views.myinfo = {
     const myApprovals = (STATE.approvals || []).filter((a) => a.requester === user.name);
     const myContract = (STATE.contracts || []).find((c) => c.employeeId === user.id);
 
+    const stat = {
+      total: myApprovals.length,
+      pending: myApprovals.filter((a) => a.status === '대기').length,
+      approved: myApprovals.filter((a) => a.status === '승인').length,
+      rejected: myApprovals.filter((a) => a.status === '반려').length,
+    };
+
     el.innerHTML = `
       <div class="grid grid-2">
         <div class="card">
@@ -61,14 +68,29 @@ Views.myinfo = {
       </div>
 
       <div class="card" style="margin-top:16px;">
-        <div class="card-head"><div><h3>내 결재·지출결의 현황</h3><div class="sub">내가 상신한 문서의 진행 상태만 보여요</div></div></div>
+        <div class="card-head">
+          <div><h3>내 결재·지출결의 현황</h3><div class="sub">누적 상신 내역과 진행 상태를 확인해요</div></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" id="btnMyLeave">+ 휴가신청서 작성</button>
+            <button class="btn btn-primary" id="btnMyApv">+ 지출결의서 작성</button>
+          </div>
+        </div>
+        <div class="grid grid-4" style="margin-bottom:16px;">
+          ${miniKpi('누적 상신', `${stat.total}건`)}
+          ${miniKpi('대기 중', `${stat.pending}건`, stat.pending ? 'var(--point)' : null)}
+          ${miniKpi('승인', `${stat.approved}건`, 'var(--accent)')}
+          ${miniKpi('반려', `${stat.rejected}건`, stat.rejected ? 'var(--red)' : null)}
+        </div>
         <table>
           <thead><tr><th>문서 종류</th><th>제목</th><th class="num">금액</th><th>상태</th><th>상신일</th></tr></thead>
           <tbody>
-            ${myApprovals.length ? myApprovals.map((a) => `
+            ${myApprovals.length ? myApprovals.slice().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).map((a) => `
               <tr>
                 <td>${UI.escapeHtml(a.docType)}</td>
-                <td>${UI.escapeHtml(a.title)}</td>
+                <td>
+                  <strong>${UI.escapeHtml(a.title)}</strong>
+                  ${a.status === '반려' && a.rejectReason ? `<div class="hint" style="color:var(--red);">반려 사유: ${UI.escapeHtml(a.rejectReason)}</div>` : ''}
+                </td>
                 <td class="num">${a.total ? UI.won(a.total) : '-'}</td>
                 <td>${statusBadgeApv(a.status)}</td>
                 <td>${UI.dateFmt(a.createdAt)}</td>
@@ -90,6 +112,9 @@ Views.myinfo = {
       </div>
     `;
 
+    el.querySelector('#btnMyApv').addEventListener('click', () => openApvModal(user.name));
+    el.querySelector('#btnMyLeave').addEventListener('click', () => openLeaveModal(user.id));
+
     el.querySelector('#pwForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(e.target);
@@ -102,3 +127,12 @@ Views.myinfo = {
     });
   },
 };
+
+function miniKpi(label, value, color) {
+  return `
+    <div class="card" style="padding:14px;">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value num" style="font-size:19px;${color ? `color:${color};` : ''}">${value}</div>
+    </div>
+  `;
+}

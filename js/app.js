@@ -54,6 +54,16 @@ function migrateState(state) {
 
 function persist() {
   Storage.save(STATE);
+  updateApprovalBadge();
+}
+
+// 사이드바 "전자결재" 메뉴 옆에 대기 중인 결재 건수를 뱃지로 표시한다.
+function updateApprovalBadge() {
+  const badge = document.getElementById('approvalBadge');
+  if (!badge) return;
+  const count = (STATE.approvals || []).filter((a) => a.status === '대기').length;
+  badge.textContent = count > 99 ? '99+' : String(count);
+  badge.style.display = count > 0 ? 'inline-flex' : 'none';
 }
 
 function rerender() {
@@ -125,6 +135,9 @@ function initRoleToggle() {
     btn.addEventListener('click', () => {
       Auth.setViewRole(btn.dataset.role);
       applyRoleUI();
+      // 대시보드처럼 역할에 따라 내용이 달라지는 화면은 즉시 다시 그려준다.
+      const activeKey = document.querySelector('.nav-item.is-active')?.dataset.view || 'dashboard';
+      renderView(activeKey);
     });
   });
 }
