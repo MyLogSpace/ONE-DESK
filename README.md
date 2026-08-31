@@ -4,7 +4,7 @@
 사내 경영지원 통합 웹 애플리케이션입니다. 서버·프레임워크 없이 브라우저 `localStorage`만으로 동작하는
 정적 웹앱이며, GitHub Pages로 배포되어 있습니다.
 
-**🔗 Live Demo:** _(GitHub Pages 배포 후 링크 추가)_
+**🔗 Live Demo:** (https://mylogspace.github.io/ONE-DESK/)
 
 ---
 
