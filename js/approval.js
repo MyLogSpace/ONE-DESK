@@ -55,7 +55,7 @@ Views.approval = {
       tbody.innerHTML = list.map((a) => `
         <tr data-id="${a.id}">
           <td><span class="badge badge-gray">${a.docType}</span></td>
-          <td><strong>${UI.escapeHtml(a.title)}</strong>${a.docType === '휴가신청서' ? `<div class="hint">${UI.dateFmt(a.startDate)} ~ ${UI.dateFmt(a.endDate)} · ${a.days}일</div>` : ''}${a.status === '반려' && a.rejectReason ? `<div class="hint" style="color:var(--red);">반려 사유: ${UI.escapeHtml(a.rejectReason)}</div>` : ''}</td>
+          <td><strong>${UI.escapeHtml(a.title)}</strong>${a.docType === '휴가신청서' ? `<div class="hint">${UI.dateFmt(a.startDate)} ~ ${UI.dateFmt(a.endDate)} · ${a.days}일</div>` : ''}</td>
           <td>${UI.escapeHtml(a.requester)}</td>
           <td class="num">${a.docType === '지출결의서' ? `<strong>${UI.won(a.total)}</strong>` : '-'}</td>
           <td>${chainProgressHtml(a)}</td>
@@ -94,7 +94,10 @@ Views.approval = {
 
     UI.on(tbody, '.act-reject', 'click', (e, t) => {
       const a = STATE.approvals.find((x) => x.id === t.closest('tr').dataset.id);
-      openRejectModal(a, draw);
+      a.status = '반려';
+      persist();
+      draw();
+      UI.toast('반려 처리되었습니다.');
     });
 
     UI.on(tbody, '.act-del', 'click', (e, t) => {
@@ -156,39 +159,6 @@ function chainProgressHtml(a) {
 function statusBadgeApv(status) {
   const map = { 대기: 'badge-amber', 승인: 'badge-green', 반려: 'badge-red' };
   return `<span class="badge ${map[status]}">${status}</span>`;
-}
-
-// 반려 사유를 반드시 입력받아 기록한다 — 기안자가 마이페이지에서 왜 반려됐는지 확인할 수 있게 한다.
-function openRejectModal(a, onDone) {
-  UI.openModal(`
-    <div class="modal-head"><h3>반려 사유 입력</h3><button class="modal-close" id="mClose">✕</button></div>
-    <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:12px;">
-      <strong>${UI.escapeHtml(a.title)}</strong> (${UI.escapeHtml(a.requester)})
-    </div>
-    <form id="rejectForm">
-      <div class="field"><label>반려 사유</label>
-        <textarea name="reason" rows="3" required placeholder="예: 예산 초과로 재검토 필요" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 11px;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="btn btn-ghost" id="mCancel">취소</button>
-        <button type="submit" class="btn btn-danger">반려 처리</button>
-      </div>
-    </form>
-  `);
-  const close = () => UI.closeModal();
-  document.getElementById('mClose').onclick = close;
-  document.getElementById('mCancel').onclick = close;
-  document.getElementById('rejectForm').onsubmit = (e) => {
-    e.preventDefault();
-    const reason = new FormData(e.target).get('reason').trim();
-    if (!reason) return;
-    a.status = '반려';
-    a.rejectReason = reason;
-    persist();
-    close();
-    onDone();
-    UI.toast('반려 처리되었습니다.');
-  };
 }
 
 /* ---------------------- 지출결의서 작성 ---------------------- */
